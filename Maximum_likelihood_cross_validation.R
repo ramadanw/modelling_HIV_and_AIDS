@@ -1,0 +1,49 @@
+Dataset=data.matrix(Dataset)
+data=Dataset
+Kgauss<-function(x)
+{
+  Kgaus<-(1/sqrt(2*pi))*exp(-(x^2)/2)
+  return(Kgaus)
+}
+MLCV<-function(h)
+{
+  n<-nrow(data)
+  for(l in 1:n)
+  {
+    databaru<-data[-l,]
+    yb1<-databaru[,1]
+    yb2<-databaru[,2]
+    xb<-databaru[,3]
+    datanew1<-data.frame(yb1,xb)
+    datanew2<-data.frame(yb2,xb)
+    nbGLM1<-glm.nb(yb1 ~ xb, data=datanew1)
+    nbGLM2<-glm.nb(yb2 ~ xb, data=datanew2)
+    b01<-coef(nbGLM1)[1]
+    b02<-coef(nbGLM2)[1]
+    alfa1<-nbGLM1$theta
+    alfa2<-nbGLM1$theta
+    param<-c(coef(nbGLM)[1],coef(nbGLM)[2],alfa)
+    wparam<-rep(0,3)
+    x01<-data[l,2]
+    #x01<-data[l,2]
+    x1<-xb-x01
+    X<-cbind((rep(1,n-1)), x1)
+    K1<-(1/h)*Kgauss(x1/h)
+    likelihood<-function(wparam)
+    {
+      b0<-wparam[1]
+      b1<-wparam[2]
+      alfaa<-wparam[3] 
+      hasil=sum((lgamma(yb+(1/(alfaa)))-lfactorial(yb)-lgamma(1/alfaa)-1/(alfaa))*log(1+(alfaa)*exp(b0+b1*x1))+yb*log(alfaa)+yb*(b0+b1*x1)-yb*log(1+alfaa*exp(b0+b1*x1))*K1)
+    }	
+    newrap=optim(param,likelihood,control=list(fnscale=-1,maxit=10),hessian=TRUE)
+    parameter=matrix(0,n,3)
+    parameter[l,]<-as.vector(newrap$par)
+    beta0<-parameter[l,1]
+    beta1<-parameter[l,2]
+    alfab<-parameter[l,3]
+    mui<-exp(beta0+beta1*x1)
+    lfxy<-K1*(lgamma(yb+(1/alfab))-lfactorial(yb)-lgamma(1/alfab)-(1/alfab)*log(1+alfab*mui)+(yb*log(alfab))+(yb*beta0)-yb*log(1+alfab*mui))
+  }
+  mlcv<-sum(lfxy)
+}
